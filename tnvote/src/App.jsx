@@ -358,36 +358,27 @@ function Landing({ onBrowseAll, onAddressResult }) {
   const handleLookup = async () => {
     if (!address.trim()) return;
     setLoading(true); setError(null);
-    try {
-      // Geocode the address using the free Census geocoder
-      const encoded = encodeURIComponent(address.trim() + ", Tennessee");
-      const url = `https://geocoding.geo.census.gov/geocoder/geographies/onelineaddress?address=${encoded}&benchmark=Public_AR_Current&vintage=Current_Current&layers=8,12,46,54,86&format=json`;
-      const res = await fetch(url);
-      const data = await res.json();
-      const match = data?.result?.addressMatches?.[0];
-      if (!match) { setError("Address not found. Try adding your city or zip code."); setLoading(false); return; }
 
-      const geographies = match.geographies;
-      const countyName = geographies?.Counties?.[0]?.NAME || "";
-      const stateLower = geographies?.["2020 Census States"]?.[0]?.NAME || "";
-      const inShelby = /shelby/i.test(countyName);
+    const a = address.toUpperCase();
 
-      // Build list of relevant races based on geography
-      // Phase 2: use actual district codes from Census response to filter candidates
-      const relevant = ALL_CANDIDATES.filter(c => {
-        if (c.level === "county") return inShelby;
-        if (c.level === "state") return inShelby; // expand with real district lookup later
-        return false;
-      });
+    // Detect Shelby County by city name or zip prefix (380xx / 381xx)
+    const shelbyCities = ["MEMPHIS","GERMANTOWN","COLLIERVILLE","BARTLETT","ARLINGTON","MILLINGTON","LAKELAND","CORDOVA"];
+    const inShelby =
+      shelbyCities.some(c => a.includes(c)) ||
+      /\b38[01]\d\d\b/.test(a);
 
-      onAddressResult({
-        address: match.matchedAddress,
-        county: countyName,
-        candidates: relevant,
-      });
-    } catch (e) {
-      setError("Lookup failed. Check your connection and try again.");
+    if (!inShelby) {
+      setError("We currently cover Shelby County, TN. Try including your city name — Memphis, Germantown, Collierville, Bartlett, or Arlington.");
+      setLoading(false);
+      return;
     }
+
+    onAddressResult({
+      address: address.trim(),
+      county: "Shelby County",
+      candidates: ALL_CANDIDATES,
+    });
+
     setLoading(false);
   };
 
